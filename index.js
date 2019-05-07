@@ -102,7 +102,7 @@ async function generateGraphQL(dbConfig, dbType, selectedSchemas = null) {
 	return null;
 };
 
-function findAll(whereColumns = null) {
+async function findAll(whereColumns = null) {
 	return await getData({ name: this.name, owner: this.owner }, this.selectColumns, whereColumns);
 };
 
