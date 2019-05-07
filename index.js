@@ -120,7 +120,7 @@ var findAll = function (whereColumns = null) {
 };
 
 var verifyDatabaseConnection = function (__dbConnection) {
-	if (__dbConnection == null || __dbConnection.user == null || __dbConnection.password == null || __dbConnection.connectionString == null) return false;
+	if (__dbConnection == null || __dbConnection.user == null || __dbConnection.password == null || __dbConnection.connectString == null) return false;
 	else return true;
 };
 
