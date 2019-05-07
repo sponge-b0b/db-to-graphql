@@ -24,7 +24,7 @@ OUT:
 }
 */
 async function generateGraphQL(dbConfig, dbType, selectedSchemas = null) {
-	var result = { root = {}, schema = {} };
+	var result = { root: {}, schema: {} };
 	try {
 		validateDatabaseConfig(dbConfig);
 
