@@ -304,18 +304,20 @@ async function getOracleORM(dbConfig) {
 		var stream = await cursor.toQueryStream();
 
 		var _orm = [];
-		stream.on('data', function (error, row) {
-			if (error) {
-				throw error;
+		stream.on('data', (row) => {
+			try {
+				_orm.push(JSON.parse(row[0]));
+			} catch (error) {
+				Console.log('stream.on(data) Error:' + error);
 			}
-			_orm.push(JSON.parse(row[0]));
 		});
 
-		stream.on('close', function (error) {
-			if (error) {
-				throw error;
+		stream.on('end', () => {
+			try {
+				connection.close();
+			} catch (error) {
+				Console.log('stream.on(end) Error:' + error);
 			}
-			connection.close();
 		});
 
 		var orm = [];
