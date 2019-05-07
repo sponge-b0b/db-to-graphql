@@ -98,7 +98,6 @@ async function generateGraphQL(dbConfig, dbType, selectedSchemas = null) {
 
 		result.schema = buildSchema(graphqlSchema);
 	} catch (error) {
-		console.log(error);
 		throw error;
 	}
 	return result;
@@ -305,10 +304,13 @@ async function getOracleORM(dbConfig) {
 		var stream = await cursor.toQueryStream();
 
 		var _orm = [];
-		var _row = await stream.on('data');
-		_orm.push(JSON.parse(_row[0]));
-		await stream.on('end');
-		await connection.close();
+		stream.on('data', function (row) {
+			_orm.push(JSON.parse(row[0]));
+		});
+
+		stream.on('end', function (row) {
+			await connection.close();
+		});
 
 		var orm = [];
 		_.forEach(_orm, function (value, key) {
