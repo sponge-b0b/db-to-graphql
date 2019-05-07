@@ -24,6 +24,7 @@ OUT:
 }
 */
 async function generateGraphQL(dbConfig, dbType, selectedSchemas = null) {
+	var result = { root = {}, schema = {} };
 	try {
 		validateDatabaseConfig(dbConfig);
 
@@ -34,7 +35,6 @@ async function generateGraphQL(dbConfig, dbType, selectedSchemas = null) {
 		await oracledb.createPool(dbConfig);
 		var dbSchema = await getOracleORM();
 
-		var root = {};
 		const sandbox = { root: root, dbSchema: dbSchema };
 		vm.createContext(sandbox);
 
@@ -95,11 +95,12 @@ async function generateGraphQL(dbConfig, dbType, selectedSchemas = null) {
 			});
 		});
 
-		return { root: root, schema: buildSchema(graphqlSchema) };
+		result.schema = buildSchema(graphqlSchema);
 	} catch (error) {
 		console.log(error);
+		throw error;
 	}
-	return null;
+	return result;
 };
 
 async function findAll(whereColumns = null) {
@@ -174,12 +175,12 @@ async function getData(fromTable, selectColumns, whereColumns = null) {
 	bindVars = sandbox.bindVars;
 	query += "; END;";
 
+	var connection = null;
+	var sandbox2 = { resRow: {}, dbData: [] };
+	vm.createContext(sandbox2);
 	try {
-		var connection = await oracledb.getConnection();
+		connection = await oracledb.getConnection();
 		var result = connection.execute(query, bindVars, { prefetchRows: 400 });
-
-		var sandbox2 = { resRow: {}, dbData: [] };
-		vm.createContext(sandbox2);
 
 		var cursor = result.outBinds.cursor;
 		var stream = cursor.toQueryStream();
@@ -205,12 +206,12 @@ async function getData(fromTable, selectColumns, whereColumns = null) {
 		vm.runInContext(code2, sandbox2);
 		stream.on('end');
 		connection.close();
-
-		return sandbox2.dbData;
 	} catch (error) {
+		console.log(error);
 		connection.close();
 		throw error;
 	}
+	return sandbox2.dbData;
 };
 
 /*
@@ -284,8 +285,10 @@ async function getOracleORM() {
 		cursor: { type: oracledb.CURSOR, dir: oracledb.BIND_OUT }
 	};
 
+	var schemas = {};
+	var connection = null;
 	try {
-		var connection = await oracledb.getConnection();
+		connection = await oracledb.getConnection();
 		var result = connection.execute(query, bindVars, { prefetchRows: 400 });
 
 		var cursor = result.outBinds.cursor;
@@ -325,7 +328,6 @@ async function getOracleORM() {
 			}
 		});
 
-		var schemas = {};
 		const sandbox = { orm: orm, schemas: schemas, findAll: findAll };
 		vm.createContext(sandbox);
 
@@ -355,11 +357,13 @@ async function getOracleORM() {
 			}
 			vm.runInContext(code, sandbox);
 		}
-		return sandbox.schemas;
+		schemas = sandbox.schemas;
 	} catch (error) {
+		console.log(error);
 		connection.close();
 		throw error;
 	}
+	return schemas;
 };
 
 module.exports = {
