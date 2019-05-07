@@ -309,7 +309,7 @@ async function getOracleORM(dbConfig) {
 		});
 
 		stream.on('end', function (row) {
-			await connection.close();
+			connection.close();
 		});
 
 		var orm = [];
