@@ -32,15 +32,9 @@ async function generateGraphQL(dbConfig, dbType, selectedSchemas = null) {
 			throw "Database type not supported: " + dbType;
 		}
 
-		await oracledb.createPool(dbConfig);
-		connection = await oracledb.getConnection();
-		connection.close();
-		connection = await oracledb.getConnection();
-		connection.close();
+		//await oracledb.createPool(dbConfig);
 
-		return result;
-
-		var dbSchema = await getOracleORM();
+		var dbSchema = await getOracleORM(dbConfig);
 
 		const sandbox = { root: root, dbSchema: dbSchema };
 		vm.createContext(sandbox);
@@ -111,11 +105,11 @@ async function generateGraphQL(dbConfig, dbType, selectedSchemas = null) {
 };
 
 async function findAll(whereColumns = null) {
-	return await getData({ name: this.name, owner: this.owner }, this.selectColumns, whereColumns);
+	return await getData(this.DB_CONNECTION, { name: this.name, owner: this.owner }, this.selectColumns, whereColumns);
 };
 
 function validateDatabaseConfig(dbConfig) {
-	if (dbConfig == null || dbConfig.user == null || dbConfig.password == null || dbConfig.connectionString == null) {
+	if (dbConfig == null || dbConfig.user == null || dbConfig.password == null || dbConfig.connectString == null) {
 		throw 'The database configuration is invalid.';
 	};
 };
@@ -131,7 +125,7 @@ function translateJStoGraphQLType(type) {
 	}
 };
 
-async function getData(fromTable, selectColumns, whereColumns = null) {
+async function getData(dbConfig, fromTable, selectColumns, whereColumns = null) {
 	if (fromTable == null || fromTable.name == null || fromTable.owner == null || selectColumns == null || selectColumns.length === 0) {
 		throw 'fromTable is invalid: ' + fromTable;
 	}
@@ -186,12 +180,16 @@ async function getData(fromTable, selectColumns, whereColumns = null) {
 	var sandbox2 = { resRow: {}, dbData: [] };
 	vm.createContext(sandbox2);
 	try {
-		connection = await oracledb.getConnection();
-		var result = connection.execute(query, bindVars, { prefetchRows: 400 });
+		var connection = await oracledb.getConnection({
+			user: dbConfig.user,
+			password: dbConfig.password,
+			connectString: dbConfig.connectString
+		});
+		var result = await connection.execute(query, bindVars, { prefetchRows: 400 });
 
 		var cursor = result.outBinds.cursor;
-		var stream = cursor.toQueryStream();
-		var row = stream.on('data');
+		var stream = await cursor.toQueryStream();
+		var row = await stream.on('data');
 		var code2 = 'resRow = {};';
 
 		sandbox2.row = row;
@@ -211,12 +209,11 @@ async function getData(fromTable, selectColumns, whereColumns = null) {
 
 		code2 += 'dbData.push(resRow);';
 		vm.runInContext(code2, sandbox2);
-		stream.on('end');
-		connection.close();
+		await stream.on('end');
+		await connection.close();
 	} catch (error) {
-		console.log(error);
 		if (connection != null) {
-			connection.close();
+			await connection.close();
 		}
 		throw error;
 	}
@@ -236,7 +233,7 @@ Schemas.SCHEMA_NAME.Tables.TABLE_NAME.findAll({ column: "COLUMN_NAME", value: "V
 Schemas.SCHEMA_NAME.Tables.TABLE_NAME.COLUMN_NAME.name;
 Schemas.SCHEMA_NAME.Tables.TABLE_NAME.COLUMN_NAME.dataType;
 */
-async function getOracleORM() {
+async function getOracleORM(dbConfig) {
 	var query = `BEGIN OPEN :cursor FOR
 		SELECT '{'
 		|| '"tableName": "' || tab.TABLE_NAME || '",'
@@ -297,17 +294,21 @@ async function getOracleORM() {
 	var schemas = {};
 	var connection = null;
 	try {
-		connection = await oracledb.getConnection();
-		var result = connection.execute(query, bindVars, { prefetchRows: 400 });
+		var connection = await oracledb.getConnection({
+			user: dbConfig.user,
+			password: dbConfig.password,
+			connectString: dbConfig.connectString
+		});
+		var result = await connection.execute(query, bindVars, { prefetchRows: 400 });
 
 		var cursor = result.outBinds.cursor;
-		var stream = cursor.toQueryStream();
+		var stream = await cursor.toQueryStream();
 
 		var _orm = [];
-		var _row = stream.on('data');
+		var _row = await stream.on('data');
 		_orm.push(JSON.parse(_row[0]));
-		stream.on('end');
-		connection.close();
+		await stream.on('end');
+		await connection.close();
 
 		var orm = [];
 		_.forEach(_orm, function (value, key) {
@@ -340,11 +341,11 @@ async function getOracleORM() {
 		const sandbox = { orm: orm, schemas: schemas, findAll: findAll };
 		vm.createContext(sandbox);
 
-		// var code = 'schemas.DB_CONNECTION = dbConfig;';
-		// code += 'schemas.DB_TYPE = \'ORACLE\';';
-		// vm.runInContext(code, sandbox);
+		var code = 'schemas.DB_CONNECTION = dbConfig;';
+		code += 'schemas.DB_TYPE = \'ORACLE\';';
+		vm.runInContext(code, sandbox);
 
-		var code = '';
+		//var code = '';
 		for (let i = 0; i < orm.length; i++) {
 			code = 'if (schemas.' + orm[i].owner + ' == null) { schemas.' + orm[i].owner + ' = {}; schemas.' + orm[i].owner + '.Tables = {}; schemas.' + orm[i].owner + '.name = \"' + orm[i].owner + '\";}';
 
@@ -354,8 +355,8 @@ async function getOracleORM() {
 			code += 'schemas.' + orm[i].owner + '.Tables.' + orm[i].tableName + '.findAll = findAll;';
 			code += 'schemas.' + orm[i].owner + '.Tables.' + orm[i].tableName + '.selectColumns = [];';
 			code += 'schemas.' + orm[i].owner + '.Tables.' + orm[i].tableName + '.selectColumnsFormatted = [];';
-			//code += 'schemas.' + orm[i].owner + '.Tables.' + orm[i].tableName + '.DB_CONNECTION = dbConfig;';
-			//code += 'schemas.' + orm[i].owner + '.Tables.' + orm[i].tableName + '.DB_TYPE = \'ORACLE\';';
+			code += 'schemas.' + orm[i].owner + '.Tables.' + orm[i].tableName + '.DB_CONNECTION = dbConfig;';
+			code += 'schemas.' + orm[i].owner + '.Tables.' + orm[i].tableName + '.DB_TYPE = \'ORACLE\';';
 
 			for (let j = 0; j < orm[i].columns.length; j++) {
 				code += 'schemas.' + orm[i].owner + '.Tables.' + orm[i].tableName + '.' + orm[i].columns[j].columnName + ' = {};';
@@ -368,9 +369,8 @@ async function getOracleORM() {
 		}
 		schemas = sandbox.schemas;
 	} catch (error) {
-		console.log(error);
 		if (connection != null) {
-			connection.close();
+			await connection.close();
 		}
 		throw error;
 	}
