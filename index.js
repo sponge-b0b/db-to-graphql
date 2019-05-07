@@ -33,6 +33,13 @@ async function generateGraphQL(dbConfig, dbType, selectedSchemas = null) {
 		}
 
 		await oracledb.createPool(dbConfig);
+		connection = await oracledb.getConnection();
+		connection.close();
+		connection = await oracledb.getConnection();
+		connection.close();
+
+		return result;
+
 		var dbSchema = await getOracleORM();
 
 		const sandbox = { root: root, dbSchema: dbSchema };
@@ -208,7 +215,9 @@ async function getData(fromTable, selectColumns, whereColumns = null) {
 		connection.close();
 	} catch (error) {
 		console.log(error);
-		connection.close();
+		if (connection != null) {
+			connection.close();
+		}
 		throw error;
 	}
 	return sandbox2.dbData;
@@ -360,7 +369,9 @@ async function getOracleORM() {
 		schemas = sandbox.schemas;
 	} catch (error) {
 		console.log(error);
-		connection.close();
+		if (connection != null) {
+			connection.close();
+		}
 		throw error;
 	}
 	return schemas;
