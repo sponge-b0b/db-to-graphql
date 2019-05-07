@@ -14,7 +14,7 @@ var setMaxRows = function (val) {
 
 /*
 IN:
-__dbConnection = { user: "", password: "", connectionString: "host:port/sid" }
+__dbConnection = { user: "", password: "", connectString: "host:port/sid" }
 dbType = "" // "Oracle"
 selectedSchemas = ['', '', '', ...]
 OUT:
@@ -146,7 +146,7 @@ var getData = function (__dbConnection, __dbType, fromTable, selectColumns, wher
 				oracledb.getConnection({
 					user: __dbConnection.user,
 					password: __dbConnection.password,
-					connectString: __dbConnection.connectionString
+					connectString: __dbConnection.connectString
 				},
 					function (err, connection) {
 						if (err) {
@@ -254,7 +254,7 @@ var getOracleORM = function (__dbConnection) {
 			{
 				user: __dbConnection.user,
 				password: __dbConnection.password,
-				connectString: __dbConnection.connectionString
+				connectString: __dbConnection.connectString
 			},
 			function (err, connection) {
 				if (err) {
