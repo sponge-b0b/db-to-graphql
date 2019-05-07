@@ -304,16 +304,22 @@ async function getOracleORM(dbConfig) {
 		var stream = await cursor.toQueryStream();
 
 		var _orm = [];
-		stream.on('data', function (row) {
+		stream.on('data', function (error, row) {
+			if (error) {
+				throw error;
+			}
 			_orm.push(JSON.parse(row[0]));
 		});
 
-		stream.on('end', function (row) {
+		stream.on('close', function (error) {
+			if (error) {
+				throw error;
+			}
 			connection.close();
 		});
 
 		var orm = [];
-		_.forEach(_orm, function (value, key) {
+		_.forEach(_orm, function (value) {
 			var ind = _.findIndex(orm, { ownerValue: value.owner, tableNameValue: value.tableName });
 			if (ind === -1) {
 				var code1 = {
