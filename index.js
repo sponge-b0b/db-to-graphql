@@ -282,7 +282,17 @@ var getOracleORM = function (__dbConnection, selectedSchemas) {
 					cursor: { type: oracledb.CURSOR, dir: oracledb.BIND_OUT }
 				};
 
-				var schemas = selectedSchemas.join();
+				var schemas = '';
+				var isFirst = true;
+				_.forEach(selectedSchemas, function (schema) {
+					if (isFirst) {
+						schemas += `'${schema}'`;
+						isFirst = false;
+					} else {
+						schemas += `, '${schema}'`;
+					}
+				});
+
 				var query = `BEGIN OPEN :cursor FOR
 					SELECT '{'
 						|| '"owner": "' || TC.OWNER || '",'
