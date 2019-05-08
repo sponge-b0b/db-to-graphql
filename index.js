@@ -301,6 +301,11 @@ var getOracleORM = function (__dbConnection, selectedSchemas) {
 					WHERE TC.OWNER IN (${schemas})
 				END;`;
 
+				console.log();
+				console.log('SQL Query');
+				console.log('-----------------------------------------------------------------------------------------------------------------------');
+				console.log(query);
+
 				connection.execute(query, bindvars, { prefetchRows: 400 }, function (err, result) {
 					var cursor;
 					var stream;
