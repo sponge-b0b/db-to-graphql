@@ -293,23 +293,24 @@ var getOracleORM = function (__dbConnection, selectedSchemas) {
 					}
 				});
 
-				var query = `BEGIN OPEN :cursor FOR
-					SELECT '{'
-						|| '"owner": "' || TC.OWNER || '",'
-						|| '"tableName": "' || TC.TABLE_NAME || '",'
-						|| '"columnName": "' || TC.COLUMN_NAME || '",'
-						|| '"dataType": "' ||  TC.DATA_TYPE || '",'
-						|| '"unique": "' ||  CASE WHEN I.UNIQUENESS = 'UNIQUE' THEN 'YES' ELSE 'NO' END || '"'
-						|| '}' AS JSON
-					FROM ALL_IND_COLUMNS IC
-					JOIN ALL_INDEXES I
-					ON IC.INDEX_NAME = I.INDEX_NAME
-					AND IC.INDEX_OWNER IN (${schemas})
-					AND I.INDEX_TYPE = 'NORMAL'
-					RIGHT OUTER JOIN ALL_TAB_COLUMNS TC
-					ON IC.COLUMN_NAME = TC.COLUMN_NAME
-					WHERE TC.OWNER IN (${schemas})
-				END;`;
+				var query =
+					`BEGIN OPEN :cursor FOR
+						SELECT '{'
+							|| '"owner": "' || TC.OWNER || '",'
+							|| '"tableName": "' || TC.TABLE_NAME || '",'
+							|| '"columnName": "' || TC.COLUMN_NAME || '",'
+							|| '"dataType": "' || TC.DATA_TYPE || '",'
+							|| '"unique": "' || CASE WHEN I.UNIQUENESS = 'UNIQUE' THEN 'YES' ELSE 'NO' END || '"'
+							|| '}' AS JSON
+						FROM ALL_IND_COLUMNS IC
+						JOIN ALL_INDEXES I
+						ON IC.INDEX_NAME = I.INDEX_NAME
+						AND IC.INDEX_OWNER IN (${schemas})
+						AND I.INDEX_TYPE = 'NORMAL'
+						RIGHT OUTER JOIN ALL_TAB_COLUMNS TC
+						ON IC.COLUMN_NAME = TC.COLUMN_NAME
+						WHERE TC.OWNER IN (${schemas});
+					END;`;
 
 				console.log();
 				console.log('SQL Query');
