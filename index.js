@@ -44,11 +44,6 @@ var generateGraphQL = function (__dbConnection, dbType, selectedSchemas = null) 
 						selectedTables = dbSchema;
 					}
 
-					console.log();
-					console.log('Database Schema');
-					console.log('-----------------------------------------------------------------------------------------------------------------------');
-					console.log(dbSchema);
-					console.log();
 					console.log('Database Tables');
 					console.log('-----------------------------------------------------------------------------------------------------------------------');
 					console.log(selectedTables);
@@ -77,26 +72,27 @@ var generateGraphQL = function (__dbConnection, dbType, selectedSchemas = null) 
 					graphqlSchema += `${schemaQuery}`;
 
 					// root
-					var rootFunction = '';
-					_.forEach(selectedTables, function (tables) {
-						_.forEach(tables.Tables, function (table) {
-							rootFunction = 'root.' + table.owner + '_' + table.name + ' = function({' + table.selectColumnsFormatted.join() + '}) { let whereColumns = [];';
-							_.forEach(table.selectColumnsFormatted, function (column) {
-								rootFunction += ' if (' + column + ' != null) { whereColumns.push({';
-								rootFunction += ' column: dbSchema.' + table.owner + '.Tables.' + table.name + '.' + column + ',';
-								rootFunction += ' value: ' + column + ',';
-								rootFunction += ' operation: \'AND\' }); }';
-							});
-							rootFunction += ' if (whereColumns.length > 0) {';
-							rootFunction += ' return dbSchema.' + table.owner + '.Tables.' + table.name + '.findAll(whereColumns).then(function(res) { return res; }).catch((err) => { console.log(err); }); }';
-							rootFunction += ' else {';
-							rootFunction += ' return dbSchema.' + table.owner + '.Tables.' + table.name + '.findAll().then(function(res) { return res; }).catch((err) => { console.log(err); }); } };';
+					// var rootFunction = '';
+					// _.forEach(selectedTables, function (tables) {
+					// 	_.forEach(tables.Tables, function (table) {
+					// 		rootFunction = 'root.' + table.owner + '_' + table.name + ' = function({' + table.selectColumnsFormatted.join() + '}) { let whereColumns = [];';
+					// 		_.forEach(table.selectColumnsFormatted, function (column) {
+					// 			rootFunction += ' if (' + column + ' != null) { whereColumns.push({';
+					// 			rootFunction += ' column: dbSchema.' + table.owner + '.Tables.' + table.name + '.' + column + ',';
+					// 			rootFunction += ' value: ' + column + ',';
+					// 			rootFunction += ' operation: \'AND\' }); }';
+					// 		});
+					// 		rootFunction += ' if (whereColumns.length > 0) {';
+					// 		rootFunction += ' return dbSchema.' + table.owner + '.Tables.' + table.name + '.findAll(whereColumns).then(function(res) { return res; }).catch((err) => { console.log(err); }); }';
+					// 		rootFunction += ' else {';
+					// 		rootFunction += ' return dbSchema.' + table.owner + '.Tables.' + table.name + '.findAll().then(function(res) { return res; }).catch((err) => { console.log(err); }); } };';
 
-							vm.runInContext(rootFunction, sandbox);
-						});
-					});
+					// 		vm.runInContext(rootFunction, sandbox);
+					// 	});
+					// });
 
-					resolve({ root: root, graphqlSchema: graphqlSchema });
+					//resolve({ root: root, graphqlSchema: graphqlSchema });
+					resolve({ graphqlSchema: graphqlSchema });
 				})
 				.catch((err) => {
 					console.log(err);
@@ -311,11 +307,6 @@ var getOracleORM = function (__dbConnection, selectedSchemas) {
 						ON IC.COLUMN_NAME = TC.COLUMN_NAME
 						WHERE TC.OWNER IN (${schemas});
 					END;`;
-
-				console.log();
-				console.log('SQL Query');
-				console.log('-----------------------------------------------------------------------------------------------------------------------');
-				console.log(query);
 
 				connection.execute(query, bindvars, { prefetchRows: 400 }, function (err, result) {
 					var cursor;
