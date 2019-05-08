@@ -93,7 +93,8 @@ var generateGraphQL = function (__dbConnection, dbType, selectedSchemas = null) 
 							vm.runInContext(rootFunction, sandbox);
 						});
 					});
-					resolve({ root: root, schema: buildSchema(graphqlSchema) });
+					//resolve({ root: root, schema: buildSchema(graphqlSchema) });
+					resolve({ root: root, schema: graphqlSchema });
 				})
 				.catch((err) => {
 					console.log(err);
