@@ -41,39 +41,36 @@ var generateGraphQL = function (__dbConnection, dbType, selectedSchemas) {
 					// 	selectedTables = dbSchema;
 					// }
 
-					var graphqlSchema = '';
+					// Begin the GraphQL Query type
 					var schemaQuery = `type Query {${'\n'}`;
 
-					// graphqlSchema
+					// Generate GraphQL Schema
+					var graphqlSchema = '';
 					_.forEach(selectedTables, function (tables) {
 						_.forEach(tables.Tables, function (table) {
-							schemaQuery += `${'\t'}${table.owner}_${table.name}`;
+							// Each table gets a resolver that returns all rows
+							schemaQuery += `${'\t'}${table.owner}_${table.name}: [${table.owner}_${table.name}]${'\n'}`;
+
+							// Begin a GraphQL type for each table
 							graphqlSchema += `type ${table.owner}_${table.name} {${'\n'}`;
-							var isUnique = false;
-							var isFirst = true;
 							Object.keys(table).forEach(function (key) {
-								//if (key != 'DB_CONNECTION' && key != 'DB_TYPE' && key != 'selectColumns' && key != 'selectColumnsFormatted' && typeof table[key] == 'object') {
+								// Add a GraphQL field for each table column
 								graphqlSchema += `${'\t'}${table[key].name}: ${translateJStoGraphQLType(table[key].dataType)}${'\n'}`;
+
+								// Add a resolver for each unique indexed column of a table
 								if (table[key].unique === 'YES') {
-									isUnique = true;
-									if (isFirst) {
-										schemaQuery += `(`;
-									} else {
-										schemaQuery += `, `;
-									}
-									schemaQuery += `${table[key].name}: ${translateJStoGraphQLType(table[key].dataType)} = null`;
-									isFirst = false;
+									schemaQuery += `${'\t'}${table.owner}_${table.name}(${table[key].name}: ${translateJStoGraphQLType(table[key].dataType)}): ${table.owner}_${table.name}${'\n'}`;
 								}
-								//}
 							});
-							if (!isUnique) {
-								
-							}
-							schemaQuery += `): [${table.owner}_${table.name}]${'\n'}`;
+							// End the GraphQL type
 							graphqlSchema += `}${'\n'}`;
 						});
 					});
+
+					// End the GraphQL Query type
 					schemaQuery += `}${'\n'}`;
+
+					// Append the GraphQL Query type to the GraphQL Schema
 					graphqlSchema += `${schemaQuery}`;
 
 					// root
