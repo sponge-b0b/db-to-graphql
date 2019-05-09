@@ -22,53 +22,58 @@ OUT:
   schema: graphqlSchema
 }
 */
-var generateGraphQL = function (__dbConnection, dbType, selectedSchemas = null) {
+var generateGraphQL = function (__dbConnection, dbType, selectedSchemas) {
 	return new Promise(function (resolve) {
 		if (dbType === 'Oracle') {
 			getOracleORM(__dbConnection, selectedSchemas)
-				.then(function (dbSchema) {
-					var root = {};
-					const sandbox = { root: root, dbSchema: dbSchema };
-					var code;
-					vm.createContext(sandbox);
+				.then(function (selectedTables) {
+					// var root = {};
+					// const sandbox = { root: root, dbSchema: dbSchema };
+					// var code;
+					// vm.createContext(sandbox);
+
+					// var selectedTables;
+					// if (selectedSchemas != null) {
+					// 	selectedTables = _.filter(dbSchema, function (value) {
+					// 		return _.includes(selectedSchemas, value.name);
+					// 	});
+					// } else {
+					// 	selectedTables = dbSchema;
+					// }
 
 					var graphqlSchema = '';
-					var schemaQuery = 'type Query {';
-					var selectedTables;
-
-					if (selectedSchemas != null) {
-						selectedTables = _.filter(dbSchema, function (obj) {
-							return _.includes(selectedSchemas, obj.name);
-						});
-					} else {
-						selectedTables = dbSchema;
-					}
-
-					console.log('Database Tables');
-					console.log('-----------------------------------------------------------------------------------------------------------------------');
-					console.log(selectedTables);
+					var schemaQuery = `type Query {${'\n'}`;
 
 					// graphqlSchema
 					_.forEach(selectedTables, function (tables) {
 						_.forEach(tables.Tables, function (table) {
-							schemaQuery += `${table.owner}_${table.name}(`;
-							graphqlSchema += `type ${table.owner}_${table.name} {`;
+							schemaQuery += `${'\t'}${table.owner}_${table.name}`;
+							graphqlSchema += `type ${table.owner}_${table.name} {${'\n'}`;
+							var isUnique = false;
 							var isFirst = true;
 							Object.keys(table).forEach(function (key) {
-								if (key != 'DB_CONNECTION' && key != 'DB_TYPE' && key != 'selectColumns' && key != 'selectColumnsFormatted' && typeof table[key] == 'object') {
-									graphqlSchema += `${table[key].name}: ${translateJStoGraphQLType(table[key].dataType)}`;
-									if (!isFirst) {
-										schemaQuery += ', ';
+								//if (key != 'DB_CONNECTION' && key != 'DB_TYPE' && key != 'selectColumns' && key != 'selectColumnsFormatted' && typeof table[key] == 'object') {
+								graphqlSchema += `${'\t'}${table[key].name}: ${translateJStoGraphQLType(table[key].dataType)}${'\n'}`;
+								if (table[key].unique === 'YES') {
+									isUnique = true;
+									if (isFirst) {
+										schemaQuery += `(`;
+									} else {
+										schemaQuery += `, `;
 									}
-									schemaQuery += table[key].name + ': ' + translateJStoGraphQLType(table[key].dataType) + ' = null';
+									schemaQuery += `${table[key].name}: ${translateJStoGraphQLType(table[key].dataType)} = null`;
 									isFirst = false;
 								}
+								//}
 							});
-							graphqlSchema += `}`;
-							schemaQuery += '): [' + table.owner + '_' + table.name + ']';
+							if (!isUnique) {
+								
+							}
+							schemaQuery += `): [${table.owner}_${table.name}]${'\n'}`;
+							graphqlSchema += `}${'\n'}`;
 						});
 					});
-					schemaQuery += `}`;
+					schemaQuery += `}${'\n'}`;
 					graphqlSchema += `${schemaQuery}`;
 
 					// root
@@ -92,7 +97,7 @@ var generateGraphQL = function (__dbConnection, dbType, selectedSchemas = null) 
 					// });
 
 					//resolve({ root: root, graphqlSchema: graphqlSchema });
-					resolve({ graphqlSchema: graphqlSchema });
+					resolve(graphqlSchema);
 				})
 				.catch((err) => {
 					console.log(err);
@@ -359,39 +364,37 @@ var getOracleORM = function (__dbConnection, selectedSchemas) {
 							}
 						});
 
-						var Schemas = {};
-						const sandbox = { orm: orm, Schemas: Schemas, findAll: findAll, __dbConnection: __dbConnection };
-						var code = '';
+						var selectedTables = {};
+						const sandbox = { orm: orm, selectedTables: selectedTables };
 						vm.createContext(sandbox);
 
-						code = 'Schemas.DB_CONNECTION = __dbConnection;';
-						code += 'Schemas.DB_TYPE = \'ORACLE\';';
-						vm.runInContext(code, sandbox);
+						//vm.runInContext(code, sandbox);
 
+						var code = '';
 						for (let i = 0; i < orm.length; i++) {
-							code = 'if (Schemas.' + orm[i].owner + ' == null) { Schemas.' + orm[i].owner + ' = {}; Schemas.' + orm[i].owner + '.Tables = {}; Schemas.' + orm[i].owner + '.name = \"' + orm[i].owner + '\";}';
+							code = 'if (selectedTables.' + orm[i].owner + ' == null) { selectedTables.' + orm[i].owner + ' = {}; selectedTables.' + orm[i].owner + '.Tables = {}; selectedTables.' + orm[i].owner + '.name = \"' + orm[i].owner + '\";}';
 
-							code += 'Schemas.' + orm[i].owner + '.Tables.' + orm[i].tableName + ' = {};';
-							code += 'Schemas.' + orm[i].owner + '.Tables.' + orm[i].tableName + '.name = "' + orm[i].tableNameValue + '";';
-							code += 'Schemas.' + orm[i].owner + '.Tables.' + orm[i].tableName + '.owner = "' + orm[i].ownerValue + '";';
-							code += 'Schemas.' + orm[i].owner + '.Tables.' + orm[i].tableName + '.findAll = findAll;';
-							code += 'Schemas.' + orm[i].owner + '.Tables.' + orm[i].tableName + '.selectColumns = [];';
-							code += 'Schemas.' + orm[i].owner + '.Tables.' + orm[i].tableName + '.selectColumnsFormatted = [];';
-							code += 'Schemas.' + orm[i].owner + '.Tables.' + orm[i].tableName + '.DB_CONNECTION = __dbConnection;';
-							code += 'Schemas.' + orm[i].owner + '.Tables.' + orm[i].tableName + '.DB_TYPE = \'ORACLE\';';
+							code += 'selectedTables.' + orm[i].owner + '.Tables.' + orm[i].tableName + ' = {};';
+							code += 'selectedTables.' + orm[i].owner + '.Tables.' + orm[i].tableName + '.name = "' + orm[i].tableNameValue + '";';
+							code += 'selectedTables.' + orm[i].owner + '.Tables.' + orm[i].tableName + '.owner = "' + orm[i].ownerValue + '";';
+							// code += 'selectedTables.' + orm[i].owner + '.Tables.' + orm[i].tableName + '.findAll = findAll;';
+							// code += 'selectedTables.' + orm[i].owner + '.Tables.' + orm[i].tableName + '.selectColumns = [];';
+							// code += 'selectedTables.' + orm[i].owner + '.Tables.' + orm[i].tableName + '.selectColumnsFormatted = [];';
+							// code += 'selectedTables.' + orm[i].owner + '.Tables.' + orm[i].tableName + '.DB_CONNECTION = __dbConnection;';
+							// code += 'selectedTables.' + orm[i].owner + '.Tables.' + orm[i].tableName + '.DB_TYPE = \'ORACLE\';';
 
 							for (let j = 0; j < orm[i].columns.length; j++) {
-								code += 'Schemas.' + orm[i].owner + '.Tables.' + orm[i].tableName + '.' + orm[i].columns[j].columnName + ' = {};';
-								code += 'Schemas.' + orm[i].owner + '.Tables.' + orm[i].tableName + '.' + orm[i].columns[j].columnName + '.name = "' + orm[i].columns[j].columnNameValue + '";';
-								code += 'Schemas.' + orm[i].owner + '.Tables.' + orm[i].tableName + '.' + orm[i].columns[j].columnName + '.dataType = "' + orm[i].columns[j].dataType + '";';
-								code += 'Schemas.' + orm[i].owner + '.Tables.' + orm[i].tableName + '.' + orm[i].columns[j].columnName + '.unique = "' + orm[i].columns[j].unique + '";';
-								code += 'Schemas.' + orm[i].owner + '.Tables.' + orm[i].tableName + '.selectColumns.push("' + orm[i].columns[j].columnNameValue + '");';
-								code += 'Schemas.' + orm[i].owner + '.Tables.' + orm[i].tableName + '.selectColumnsFormatted.push("' + orm[i].columns[j].columnName + '");';
+								code += 'selectedTables.' + orm[i].owner + '.Tables.' + orm[i].tableName + '.' + orm[i].columns[j].columnName + ' = {};';
+								code += 'selectedTables.' + orm[i].owner + '.Tables.' + orm[i].tableName + '.' + orm[i].columns[j].columnName + '.name = "' + orm[i].columns[j].columnNameValue + '";';
+								code += 'selectedTables.' + orm[i].owner + '.Tables.' + orm[i].tableName + '.' + orm[i].columns[j].columnName + '.dataType = "' + orm[i].columns[j].dataType + '";';
+								code += 'selectedTables.' + orm[i].owner + '.Tables.' + orm[i].tableName + '.' + orm[i].columns[j].columnName + '.unique = "' + orm[i].columns[j].unique + '";';
+								//code += 'selectedTables.' + orm[i].owner + '.Tables.' + orm[i].tableName + '.selectColumns.push("' + orm[i].columns[j].columnNameValue + '");';
+								//code += 'selectedTables.' + orm[i].owner + '.Tables.' + orm[i].tableName + '.selectColumnsFormatted.push("' + orm[i].columns[j].columnName + '");';
 							}
 							vm.runInContext(code, sandbox);
 						}
 
-						resolve(sandbox.Schemas);
+						resolve(sandbox.selectedTables);
 					});
 				});
 			});
